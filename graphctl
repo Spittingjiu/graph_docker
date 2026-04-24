@@ -119,6 +119,80 @@ PY" 2>&1)"
       echo "已取消"
       exit 0
     fi
+
+    # 可选：同时删除云端 Entra 应用注册
+    read -r -p "是否同时删除云端应用注册（Entra）?(yes/no): " purge_cloud
+    if [[ "$purge_cloud" == "yes" ]]; then
+      if [[ -z "${GRAPH_BOOTSTRAP_TOKEN:-}" ]]; then
+        echo "未检测到 GRAPH_BOOTSTRAP_TOKEN，跳过云端删除。"
+        echo "如需删除云端应用，请先导出 GRAPH_BOOTSTRAP_TOKEN 后重试 clean。"
+      elif [[ ! -f .env ]]; then
+        echo "未检测到 .env，无法读取 CLIENT_ID，跳过云端删除。"
+      else
+        echo "开始尝试删除云端应用注册..."
+        set +e
+        docker compose run --rm -e GRAPH_BOOTSTRAP_TOKEN="$GRAPH_BOOTSTRAP_TOKEN" ms_graph_docker sh -lc "python3 - <<'PY'
+import os
+import requests
+
+token = os.getenv('GRAPH_BOOTSTRAP_TOKEN', '').strip()
+client_id = os.getenv('CLIENT_ID', '').strip()
+
+if not token:
+    print('skip: GRAPH_BOOTSTRAP_TOKEN missing')
+    raise SystemExit(0)
+if not client_id:
+    print('skip: CLIENT_ID missing in .env')
+    raise SystemExit(0)
+
+headers = {
+    'Authorization': f'Bearer {token}',
+    'Content-Type': 'application/json',
+}
+base = 'https://graph.microsoft.com/v1.0'
+
+resp = requests.get(
+    f'{base}/applications',
+    headers=headers,
+    params={
+        '$filter': f"appId eq '{client_id}'",
+        '$select': 'id,appId,displayName',
+    },
+    timeout=20,
+)
+
+if resp.status_code >= 400:
+    print(f'cloud-delete lookup failed: {resp.status_code} {resp.text[:300]}')
+    raise SystemExit(1)
+
+apps = resp.json().get('value', [])
+if not apps:
+    print('cloud-delete: no matching application found')
+    raise SystemExit(0)
+
+ok = True
+for app in apps:
+    app_obj_id = app.get('id')
+    name = app.get('displayName', '')
+    r = requests.delete(f'{base}/applications/{app_obj_id}', headers=headers, timeout=20)
+    if r.status_code in (204, 200):
+        print(f'cloud-delete: removed app {name} ({app_obj_id})')
+    else:
+        ok = False
+        print(f'cloud-delete failed: {r.status_code} {r.text[:300]}')
+
+raise SystemExit(0 if ok else 1)
+PY"
+        cloud_rc=$?
+        set -e
+        if [[ $cloud_rc -eq 0 ]]; then
+          echo "云端应用删除流程执行完成。"
+        else
+          echo "云端应用删除失败（本地清除仍会继续）。"
+        fi
+      fi
+    fi
+
     docker compose down --remove-orphans || true
     docker image rm -f graph_docker:local >/dev/null 2>&1 || true
     rm -f .env token.txt
@@ -135,7 +209,7 @@ commands:
   auth        运行首次授权向导（替代 rclone）
   tenant-init 自动创建应用与 .env（需 GRAPH_BOOTSTRAP_TOKEN）
   check       运行自检（网络/容器）
-  clean       一键清除（停止容器/删.env和token/删本地镜像）
+  clean       一键清除（可选同时删云端应用注册）
 EOF
     ;;
 esac

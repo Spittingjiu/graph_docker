@@ -118,6 +118,9 @@ az login --tenant <tenant_id> --allow-no-subscriptions
 gb clean
 ```
 
+`gb clean` 过程中会询问：是否同时删除云端应用注册（Entra）。
+如果你选择 yes，并且已提供 `GRAPH_BOOTSTRAP_TOKEN`，会尝试删除当前 `CLIENT_ID` 对应的云端 application。
+
 - 完整卸载（删除安装目录与快捷命令）：
 
 ```bash
