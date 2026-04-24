@@ -58,12 +58,26 @@ if [[ -z "${GRAPH_BOOTSTRAP_TOKEN:-}" ]]; then
 
   if command -v az >/dev/null 2>&1; then
     echo "未检测到 GRAPH_BOOTSTRAP_TOKEN，尝试使用 Azure CLI 自动获取..."
-    if ! az account show >/dev/null 2>&1; then
-      echo "Azure CLI 尚未登录，正在执行 az login --allow-no-subscriptions..."
-      az login --allow-no-subscriptions >/dev/null
+    if az account show >/dev/null 2>&1; then
+      GRAPH_BOOTSTRAP_TOKEN="$(az account get-access-token --resource-type ms-graph --query accessToken -o tsv || true)"
+      export GRAPH_BOOTSTRAP_TOKEN
+      if [[ -n "${GRAPH_BOOTSTRAP_TOKEN:-}" ]]; then
+        echo "已从当前 Azure 登录态获取到 GRAPH_BOOTSTRAP_TOKEN。"
+      fi
+    else
+      echo "Azure CLI 尚未登录。"
+      read -r -p "是否现在登录 Azure（az login）? (y/N): " do_az_login
+      case "${do_az_login,,}" in
+        y|yes)
+          az login --allow-no-subscriptions >/dev/null
+          GRAPH_BOOTSTRAP_TOKEN="$(az account get-access-token --resource-type ms-graph --query accessToken -o tsv || true)"
+          export GRAPH_BOOTSTRAP_TOKEN
+          ;;
+        *)
+          echo "已跳过 az login。你也可以手动 export GRAPH_BOOTSTRAP_TOKEN 后重试。"
+          ;;
+      esac
     fi
-    GRAPH_BOOTSTRAP_TOKEN="$(az account get-access-token --resource-type ms-graph --query accessToken -o tsv || true)"
-    export GRAPH_BOOTSTRAP_TOKEN
   fi
 fi
 

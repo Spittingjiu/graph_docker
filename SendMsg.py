@@ -7,10 +7,14 @@ TG_SEND_ID = os.getenv('TG_SEND_ID')
 
 
 class SendMessage:
+    _missing_env_warned = False
+
     # 发送 TG Bot 消息
     def send_tg_msg(msg):
         if not TG_BOT_TOKEN or not TG_SEND_ID:
-            print("TG_BOT_TOKEN 或者 TG_SEND_ID 不存在")
+            if not SendMessage._missing_env_warned:
+                print("TG_BOT_TOKEN 或者 TG_SEND_ID 不存在（仅提示一次）")
+                SendMessage._missing_env_warned = True
             return
         PROXY_URL = os.getenv('PROXY_URL')
         if not PROXY_URL or PROXY_URL.lower() == "null":
