@@ -12,12 +12,15 @@
 
 ---
 
-## 这版解决了什么
+## 这版解决了什么（最新）
 
 - 不再需要下载 `rclone`
+- 新增运维菜单（`./install.sh`）
+- 新增 VPS 快捷命令：`gb`（安装后可直接打开菜单）
 - 新增首次授权向导（`./graphctl auth`）
 - 新增一键全流程初始化（`./setup_all_in_one.sh`）
 - 新增自检命令（`./graphctl check`）
+- 新增一键清除（`./graphctl clean`）
 - 默认 `full` 模式（保留原多接口保活策略）
 
 ---
@@ -45,7 +48,15 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/Spittingjiu/graph_docker
 
 它会自动把仓库放到 `/opt/graph_docker`。
 
-### 场景 B：你已经在仓库目录里
+### 场景 B：你已经安装过（推荐直接用 gb）
+
+```bash
+gb
+```
+
+会直接打开运维菜单（安装/更新、授权、初始化、自检、清理、卸载都在里面）。
+
+如果你在仓库目录，也可以直接执行：
 
 ```bash
 ./setup_all_in_one.sh
@@ -164,19 +175,22 @@ export GRAPH_BOOTSTRAP_TOKEN='eyJ...'
 
 ---
 
-## 兼容分步流程（可选）
+## 分步流程（可选）
 
 ```bash
+cd /opt/graph_docker
 ./graphctl tenant-init
 ./graphctl auth
-./bootstrap.sh
+./graphctl up
+./graphctl check
 ```
 
 ---
 
 ## 常用命令
 
-> 注意：`graphctl` 在安装目录里（默认 `/opt/graph_docker`）。
+> 注意：日常推荐直接输入 `gb` 进入菜单。
+> 如果手动跑命令，`graphctl` 在安装目录里（默认 `/opt/graph_docker`）。
 > 先执行：`cd /opt/graph_docker`
 
 ```bash
@@ -189,7 +203,7 @@ export GRAPH_BOOTSTRAP_TOKEN='eyJ...'
 ./graphctl clean       # 一键清除（容器/本地.env/token/本地镜像）
 ```
 
-也支持非交互命令：
+也支持非交互命令（install.sh / gb 都可）：
 
 ```bash
 ./install.sh install
@@ -201,6 +215,14 @@ export GRAPH_BOOTSTRAP_TOKEN='eyJ...'
 ./install.sh logs 200
 ./install.sh clean
 ./install.sh uninstall
+
+# 等价写法（已安装后）
+gb install
+gb auth
+gb init
+gb check
+gb clean
+gb uninstall
 ```
 
 ---

@@ -42,7 +42,25 @@ ensure_repo() {
 
   cd "$INSTALL_DIR"
   chmod +x setup_all_in_one.sh graphctl bootstrap.sh auth_cli.py tenant_init.py install.sh || true
+
+  # 安装/更新 gb 快捷命令
+  install_gb_alias
 }
++
++install_gb_alias() {
++  local gb_target="/usr/local/bin/gb"
++  local tmp_file
++  tmp_file="$(mktemp)"
++
++  cat > "$tmp_file" <<EOF
++#!/usr/bin/env bash
++exec "$INSTALL_DIR/install.sh" "\$@"
++EOF
++
++  sudo mv "$tmp_file" "$gb_target"
++  sudo chmod +x "$gb_target"
++  say "已安装快捷命令: gb"
++}
 
 run_graphctl() {
   local sub="$1"
@@ -79,6 +97,9 @@ uninstall_all() {
   if [[ -d "$INSTALL_DIR" ]]; then
     rm -rf "$INSTALL_DIR"
   fi
+
+  # 删除 gb 快捷命令
+  sudo rm -f /usr/local/bin/gb || true
 
   say "卸载完成。"
 }
