@@ -39,11 +39,7 @@ class Update:
     @staticmethod
     def gettoken(refresh_token):
         if not CLIENT_ID or not CLIENT_SECRET:
-            Update._send_msg(
-                time.strftime('%Y-%m-%d %H:%M:%S', time.localtime()) + '\n' +
-                'CLIENT_ID 或 CLIENT_SECRET 缺失，更新 token 失败'
-            )
-            return
+            raise RuntimeError('CLIENT_ID 或 CLIENT_SECRET 缺失，无法更新 token')
 
         headers = {
             'Content-Type': 'application/x-www-form-urlencoded',
@@ -60,10 +56,15 @@ class Update:
         html = req.post(TOKEN_URL, data=data, headers=headers, timeout=REQUEST_TIMEOUT)
         html.raise_for_status()
         jsontxt = json.loads(html.text)
-        new_refresh_token = jsontxt['refresh_token']
+
+        new_refresh_token = jsontxt.get('refresh_token')
+        if not new_refresh_token:
+            raise RuntimeError('刷新 token 响应中缺少 refresh_token')
 
         with open(path, 'w+') as f:
             f.write(new_refresh_token)
+
+        return True
 
     @staticmethod
     def update_token():
@@ -85,8 +86,9 @@ class Update:
                 )
                 return
 
-            Update.gettoken(refresh_token)
-            Update._send_msg(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime()) + '\n更新 token 成功')
+            ok = Update.gettoken(refresh_token)
+            if ok:
+                Update._send_msg(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime()) + '\n更新 token 成功')
         except Exception as e:
             Update._send_msg(
                 time.strftime('%Y-%m-%d %H:%M:%S', time.localtime()) +

@@ -21,6 +21,7 @@ IS_API_URLS_EXTEND = os.getenv('IS_API_URLS_EXTEND', 'false')
 GRAPH_API_PROFILE = os.getenv('GRAPH_API_PROFILE', 'full').lower().strip()
 GRAPH_APIS = os.getenv('GRAPH_APIS', '').strip()
 REQUEST_TIMEOUT = int(os.getenv('REQUEST_TIMEOUT', '15'))
+REDIRECT_URI = os.getenv('REDIRECT_URI', 'http://localhost:53682/').strip() or 'http://localhost:53682/'
 
 CYCLE_MIN = int(os.getenv('CYCLE_MIN', '3'))
 CYCLE_MAX = int(os.getenv('CYCLE_MAX', '5'))
@@ -58,7 +59,7 @@ def gettoken(refresh_token):
         'refresh_token': refresh_token,
         'client_id': CLIENT_ID,
         'client_secret': CLIENT_SECRET,
-        'redirect_uri': 'http://localhost:53682/',
+        'redirect_uri': REDIRECT_URI,
     }
 
     resp = req.post(TOKEN_URL, data=data, headers=headers, timeout=REQUEST_TIMEOUT)
