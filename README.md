@@ -38,28 +38,110 @@
 
 ---
 
-## GRAPH_BOOTSTRAP_TOKEN 怎么获取
+## GRAPH_BOOTSTRAP_TOKEN 怎么获取（超详细）
 
-这个 token 用来调用 Microsoft Graph 管理 API（自动创应用/配权限），推荐用 Azure CLI 获取。
+这个 token 是给 `tenant-init` 用的，作用是：
+- 自动创建 Entra 应用
+- 自动配置 Graph 权限
+- 自动生成 CLIENT_SECRET
+- 自动写入 `.env`
 
-### 方式 A：Azure CLI（推荐）
+如果没有这个 token，自动化就做不了上述动作。
+
+### 前提条件
+
+你登录的账号需要有“应用注册管理”能力（比如全局管理员/应用管理员）。
+如果权限不足，后面会报 `403 Authorization_RequestDenied`。
+
+---
+
+### 方式 A：Azure CLI（推荐，最简单）
+
+#### 第 1 步：安装 Azure CLI
+
+- Ubuntu / Debian：
+```bash
+curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+```
+
+- RHEL / CentOS：
+```bash
+sudo rpm --import https://packages.microsoft.com/keys/microsoft.asc
+sudo dnf install -y https://packages.microsoft.com/config/rhel/9.0/packages-microsoft-prod.rpm
+sudo dnf install -y azure-cli
+```
+
+- macOS（brew）：
+```bash
+brew update && brew install azure-cli
+```
+
+装完先检查：
+```bash
+az version
+```
+
+#### 第 2 步：登录 Azure
 
 ```bash
 az login
+```
+
+会弹浏览器登录。请用有管理权限的账号登录。
+
+> 如果是服务器无桌面环境：
+> 使用 `az login --use-device-code`，按提示去浏览器输入设备码登录。
+
+#### 第 3 步：获取 Graph Bootstrap Token
+
+```bash
 export GRAPH_BOOTSTRAP_TOKEN="$(az account get-access-token --resource-type ms-graph --query accessToken -o tsv)"
 ```
 
-### 方式 B：手动获取
+#### 第 4 步：确认变量已生效
 
-你也可以从已有管理工具拿到 Graph Access Token，然后：
+```bash
+echo "$GRAPH_BOOTSTRAP_TOKEN" | cut -c1-30
+```
+
+能看到一串 `eyJ...` 开头字符就对了（不要完整打印到公开环境）。
+
+#### 第 5 步：直接跑一键脚本
+
+```bash
+./setup_all_in_one.sh
+```
+
+---
+
+### 方式 B：手动注入（已有 token 时）
+
+如果你已经从别的系统拿到了 Graph Access Token，直接：
 
 ```bash
 export GRAPH_BOOTSTRAP_TOKEN='eyJ...'
+./setup_all_in_one.sh
 ```
 
-> 注意：
-> - 这个 token 必须是有权限管理应用注册的管理员账号签发。
-> - token 有时效，过期后重新获取一次即可。
+---
+
+### 常见报错与处理
+
+- `az: command not found`
+  - 说明 Azure CLI 没安装，先执行上面的安装命令。
+
+- `Please run 'az login'`
+  - 说明未登录，先执行 `az login`。
+
+- `403 Authorization_RequestDenied`
+  - 当前账号权限不够，换管理员账号登录，或给该账号应用注册管理权限。
+
+- `GRAPH_BOOTSTRAP_TOKEN` 为空
+  - 重新执行：
+  - `export GRAPH_BOOTSTRAP_TOKEN="$(az account get-access-token --resource-type ms-graph --query accessToken -o tsv)"`
+
+- 运行一段时间后又失败
+  - token 过期了，重新获取一次再运行脚本即可。
 
 ---
 
