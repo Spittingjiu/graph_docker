@@ -28,22 +28,89 @@ case "$cmd" in
     docker compose run --rm -e GRAPH_BOOTSTRAP_TOKEN="$GRAPH_BOOTSTRAP_TOKEN" ms_graph_docker python3 /app/tenant_init.py
     ;;
   check)
-    echo "[check] compose config"
-    docker compose config >/dev/null && echo "OK"
+    failures=()
+    warnings=()
 
-    echo "[check] dns + token endpoint (container)"
-    docker compose run --rm ms_graph_docker sh -lc "python3 - <<'PY'
-import requests
+    echo "[check] 执行自检中..."
+
+    # 1) compose 配置
+    if docker compose config >/dev/null 2>&1; then
+      compose_ok="OK"
+    else
+      compose_ok="FAIL"
+      failures+=("docker compose 配置无效")
+    fi
+
+    # 2) .env 基础校验
+    if [[ -f .env ]]; then
+      env_ok="OK"
+      client_id_val="$(grep -E '^CLIENT_ID=' .env | head -n1 | cut -d= -f2- || true)"
+      client_secret_val="$(grep -E '^CLIENT_SECRET=' .env | head -n1 | cut -d= -f2- || true)"
+      if [[ -z "$client_id_val" || -z "$client_secret_val" ]]; then
+        warnings+=(".env 存在，但 CLIENT_ID/CLIENT_SECRET 可能未配置完整")
+      fi
+    else
+      env_ok="MISSING"
+      failures+=("缺少 .env 文件")
+    fi
+
+    # 3) 容器内网络到微软登录端点
+    net_output="$(docker compose run --rm ms_graph_docker sh -lc "python3 - <<'PY'
+import requests, sys
+url='https://login.microsoftonline.com/common/discovery/v2.0/keys'
 try:
-    r = requests.get('https://login.microsoftonline.com/common/discovery/v2.0/keys', timeout=10)
-    print('token endpoint reachable:', r.status_code)
+    r=requests.get(url, timeout=10)
+    print(f'status={r.status_code}')
+    sys.exit(0 if r.status_code < 500 else 2)
 except Exception as e:
-    print('token endpoint failed:', repr(e))
-    raise
-PY"
+    print(f'error={e!r}')
+    sys.exit(1)
+PY" 2>&1)"
+    net_rc=$?
+    if [[ $net_rc -eq 0 ]]; then
+      net_ok="OK"
+    else
+      net_ok="FAIL"
+      failures+=("容器无法访问 Microsoft 登录端点")
+    fi
 
-    echo "[check] container status"
-    docker compose ps
+    # 4) 主服务运行状态
+    if docker compose ps --services --status running | grep -qx 'ms_graph_docker'; then
+      svc_ok="RUNNING"
+    else
+      svc_ok="STOPPED"
+      warnings+=("服务未运行（可执行: gb up）")
+    fi
+
+    echo
+    echo "====== 自检结论 ======"
+    echo "compose 配置: $compose_ok"
+    echo ".env 文件:   $env_ok"
+    echo "网络连通:   $net_ok"
+    echo "服务状态:   $svc_ok"
+
+    if [[ ${#warnings[@]} -gt 0 ]]; then
+      echo
+      echo "⚠️ 提示："
+      for w in "${warnings[@]}"; do
+        echo "- $w"
+      done
+    fi
+
+    if [[ ${#failures[@]} -eq 0 ]]; then
+      echo
+      echo "✅ 结论：核心检查通过。"
+    else
+      echo
+      echo "❌ 结论：发现 ${#failures[@]} 个问题："
+      for f in "${failures[@]}"; do
+        echo "- $f"
+      done
+      echo
+      echo "建议先执行：gb init 或 gb clean 后重装。"
+      echo "（网络问题可优先检查 VPS 出网/DNS）"
+      exit 1
+    fi
     ;;
   clean)
     echo "将执行一键清除：停止容器 + 删除本地数据(.env/token) + 删除镜像"
