@@ -1,24 +1,11 @@
-version: "3.7"
-
 services:
   ms_graph_docker:
-    image: yourwit/ms_graph_docker:latest
-    # bridge = 默认的网络模式，容器之间不需要互相通信
-    # host = 移除了宿主机与容器之间的网络隔离，容器直接使用宿主机的网络，这样就能在容器中访问宿主机网络
-    # none = 禁用所有的网络
-    # service:[service name]
-    # container:[container name/id]
-    network_mode: bridge
-    # restart: always
+    build: .
+    image: graph_docker:local
     container_name: ms_graph_docker
-    # volumes:
-    environment:
-      # 以下配置项值均为字符串
-      TZ: "Asia/Shanghai"
-      TG_BOT_TOKEN: "11111:11111" # telegram bot token，可通过 t.me/botfather 获取
-      TG_SEND_ID: "11111" # telegram bot 主人的id
-      CLIENT_ID: "client_idclient_idclient_idclient_id"
-      CLIENT_SECRET: "client_secretclient_secretclient_secretclient_secret"
-      TOKEN_FIRST: "" #必填
-      PROXY_URL: "null" # 可选 代理 url ，如反向代理地址 http://example.com/ 则填写 example.com 设置方法 https://www.hostloc.com/thread-805441-1-1.html
-      IS_API_URLS_EXTEND: "false" # 可选 是否调用补充的 api 接口
+    network_mode: host
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./token.txt:/app/token.txt
