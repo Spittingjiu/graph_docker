@@ -59,7 +59,7 @@ gb uninstall
 `gb init`（或 `./setup_all_in_one.sh`）会自动：
 
 1) 检测 `az`，缺失时询问是否自动安装（Ubuntu/Debian）
-2) 自动创建 Entra 应用并写入 `.env`
+2) 自动创建 Entra 应用（可手输应用名；留空则自动生成随机名）并写入 `.env`
 3) 暂停等待你完成管理员 consent（必须）
 4) 运行首次授权向导，获取并写入 `token.txt`
 5) 启动容器

@@ -5,6 +5,8 @@ import os
 import sys
 import json
 import datetime
+import random
+import string
 from urllib.parse import quote
 
 import requests
@@ -148,6 +150,11 @@ def upsert_env(path: str, updates: dict):
         f.write("\n".join(out_lines).rstrip() + "\n")
 
 
+def generate_random_app_name(prefix: str = "graph_docker_"):
+    suffix = "".join(random.choices(string.ascii_lowercase + string.digits, k=8))
+    return f"{prefix}{suffix}"
+
+
 def main():
     print("=== graph_docker tenant-init 向导 ===")
     print("功能：自动创建 Entra 应用、配置权限、生成 secret、写入 .env")
@@ -162,7 +169,18 @@ def main():
     tenant_id = os.getenv("TENANT_ID", "common").strip() or "common"
     redirect_uri = os.getenv("REDIRECT_URI", "http://localhost:53682/").strip() or "http://localhost:53682/"
     graph_profile = (os.getenv("GRAPH_API_PROFILE", "full").strip() or "full").lower()
-    display_name = os.getenv("APP_DISPLAY_NAME", "graph_docker_auto").strip() or "graph_docker_auto"
+
+    display_name_env = os.getenv("APP_DISPLAY_NAME", "").strip()
+    if display_name_env:
+        display_name = display_name_env
+        print(f"应用名称：使用环境变量 APP_DISPLAY_NAME={display_name}")
+    else:
+        display_name_input = input("应用名称（留空自动随机）: ").strip()
+        if display_name_input:
+            display_name = display_name_input
+        else:
+            display_name = generate_random_app_name()
+            print(f"应用名称：未输入，自动生成 {display_name}")
 
     print("\n[1/5] 拉取 Microsoft Graph scope 映射...")
     _, scope_map = get_graph_scope_map(bootstrap_token)
