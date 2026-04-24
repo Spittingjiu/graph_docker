@@ -2,273 +2,123 @@
 
 轻量的 Microsoft Graph 保活工具（自维护版）。
 
-> 转载与二次维护说明
+> 维护说明
 >
-> 本仓库由 `Spittingjiu/ms_graph_docker` 迁移而来，原始项目来源：
-> - 原仓库（fork 来源）：`https://github.com/comdotwww/ms_graph_docker`
-> - 迁移来源（本账号 fork）：`https://github.com/Spittingjiu/ms_graph_docker`
->
-> 从本仓库开始，后续功能迭代、修复与发布将由我们独立维护。
+> 本仓库由 `Spittingjiu/ms_graph_docker` 迁移而来，后续功能迭代、修复与发布由本仓库独立维护。
 
 ---
 
-## 这版解决了什么（最新）
+## 最快使用（推荐）
 
-- 不再需要下载 `rclone`
-- 新增运维菜单（`./install.sh`）
-- 新增 VPS 快捷命令：`gb`（安装后可直接打开菜单）
-- 新增首次授权向导（`./graphctl auth`）
-- 新增一键全流程初始化（`./setup_all_in_one.sh`）
-- 新增自检命令（`./graphctl check`）
-- 新增一键清除（`./graphctl clean`）
-- 默认 `full` 模式（保留原多接口保活策略）
-
----
-
-## 一键初始化（推荐）
-
-### 场景 A：你本机还没有仓库（推荐用这个）
-
-直接执行远程安装器（菜单模式）：
+在 VPS 直接执行：
 
 ```bash
 bash -c "$(curl -fsSL https://raw.githubusercontent.com/Spittingjiu/graph_docker/master/install.sh)"
 ```
 
-菜单含：
-- `1` 安装/更新并一键初始化
-- `2` 仅安装/更新仓库
-- `3` 首次授权向导（auth）
-- `4` 一键全流程初始化（setup_all_in_one）
-- `5` 自检（check）
-- `6` 启动服务（up）
-- `7` 查看日志（logs）
-- `8` 一键清除（clean）
-- `9` 卸载并清理
-
-它会自动把仓库放到 `/opt/graph_docker`。
-
-### 场景 B：你已经安装过（推荐直接用 gb）
+安装完成后可直接输入：
 
 ```bash
 gb
 ```
 
-会直接打开运维菜单（安装/更新、授权、初始化、自检、清理、卸载都在里面）。
-
-如果你在仓库目录，也可以直接执行：
-
-```bash
-./setup_all_in_one.sh
-```
-
-脚本会自动完成：
-1) 检测 `az`，若缺失会询问是否自动安装 Azure CLI（Ubuntu/Debian）
-2) 创建 Entra 应用并写入 `.env`
-3) 暂停等待你完成管理员 consent（必须）
-4) 首次授权向导（浏览器登录 + 粘贴回跳 URL）
-5) 启动容器
-6) 自检
+打开运维菜单。
 
 ---
 
-## GRAPH_BOOTSTRAP_TOKEN 怎么获取（超详细）
+## 菜单功能（gb / install.sh）
 
-这个 token 是给 `tenant-init` 用的，作用是：
-- 自动创建 Entra 应用
-- 自动配置 Graph 权限
-- 自动生成 CLIENT_SECRET
-- 自动写入 `.env`
+- 安装/更新并一键初始化
+- 仅安装/更新仓库
+- 首次授权向导（auth）
+- 一键全流程初始化（init）
+- 自检（check）
+- 启动服务（up）
+- 查看日志（logs）
+- 一键清除（clean）
+- 卸载并清理（uninstall）
 
-如果没有这个 token，自动化就做不了上述动作。
-
-### 前提条件
-
-你登录的账号需要有“应用注册管理”能力（比如全局管理员/应用管理员）。
-如果权限不足，后面会报 `403 Authorization_RequestDenied`。
-
----
-
-### 方式 A：Azure CLI（推荐，最简单）
-
-#### 第 1 步：安装 Azure CLI（Ubuntu / Debian）
+你也可以直接用命令：
 
 ```bash
-curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
-```
-
-装完先检查：
-```bash
-az version
-```
-
-#### 第 2 步：登录 Azure
-
-优先用这个（兼容无订阅租户场景）：
-
-```bash
-az login --allow-no-subscriptions
-```
-
-会弹浏览器登录。请用有管理权限的账号登录。
-
-> 如果是服务器无桌面环境：
-> 使用 `az login --use-device-code --allow-no-subscriptions`，按提示去浏览器输入设备码登录。
-
-如果你遇到 `AADSTS50076`（要求 MFA），这是正常安全策略，不是脚本问题：
-- 按提示在浏览器完成 MFA 即可。
-- 若仍失败，通常是登录到了不对的 tenant，改用：
-
-```bash
-az login --tenant <你的tenant_id> --allow-no-subscriptions
-```
-
-#### 第 3 步：获取 Graph Bootstrap Token
-
-```bash
-export GRAPH_BOOTSTRAP_TOKEN="$(az account get-access-token --resource-type ms-graph --query accessToken -o tsv)"
-```
-
-#### 第 4 步：确认变量已生效
-
-```bash
-echo "$GRAPH_BOOTSTRAP_TOKEN" | cut -c1-30
-```
-
-能看到一串 `eyJ...` 开头字符就对了（不要完整打印到公开环境）。
-
-#### 第 5 步：直接跑一键脚本
-
-```bash
-./setup_all_in_one.sh
-```
-
----
-
-### 方式 B：手动注入（已有 token 时）
-
-如果你已经从别的系统拿到了 Graph Access Token，直接：
-
-```bash
-export GRAPH_BOOTSTRAP_TOKEN='eyJ...'
-./setup_all_in_one.sh
-```
-
----
-
-### 常见报错与处理
-
-- `az: command not found`
-  - 说明 Azure CLI 没安装，先执行上面的安装命令。
-
-- `Please run 'az login'`
-  - 说明未登录，先执行 `az login`。
-
-- `403 Authorization_RequestDenied`
-  - 当前账号权限不够，换管理员账号登录，或给该账号应用注册管理权限。
-
-- `GRAPH_BOOTSTRAP_TOKEN` 为空
-  - 重新执行：
-  - `export GRAPH_BOOTSTRAP_TOKEN="$(az account get-access-token --resource-type ms-graph --query accessToken -o tsv)"`
-
-- 运行一段时间后又失败
-  - token 过期了，重新获取一次再运行脚本即可。
-
----
-
-## 分步流程（可选）
-
-```bash
-cd /opt/graph_docker
-./graphctl tenant-init
-./graphctl auth
-./graphctl up
-./graphctl check
-```
-
----
-
-## 常用命令
-
-> 注意：日常推荐直接输入 `gb` 进入菜单。
-> 如果手动跑命令，`graphctl` 在安装目录里（默认 `/opt/graph_docker`）。
-> 先执行：`cd /opt/graph_docker`
-
-```bash
-./graphctl up          # 启动
-./graphctl down        # 停止
-./graphctl logs        # 看日志
-./graphctl auth        # 重新授权
-./graphctl tenant-init # 自动创建应用并写入.env
-./graphctl check       # 网络/容器自检
-./graphctl clean       # 一键清除（容器/本地.env/token/本地镜像）
-```
-
-也支持非交互命令（install.sh / gb 都可）：
-
-```bash
-./install.sh install
-./install.sh update
-./install.sh auth
-./install.sh init
-./install.sh check
-./install.sh up
-./install.sh logs 200
-./install.sh clean
-./install.sh uninstall
-
-# 等价写法（已安装后）
 gb install
+gb update
 gb auth
 gb init
 gb check
+gb up
+gb logs 200
 gb clean
 gb uninstall
 ```
 
 ---
 
-## 必填参数说明（.env）
+## 一键全流程会做什么
 
-- `CLIENT_ID`：Entra 应用 ID
-- `CLIENT_SECRET`：应用密钥
+`gb init`（或 `./setup_all_in_one.sh`）会自动：
 
-推荐保留默认：
-- `TENANT_ID=common`
-- `GRAPH_API_PROFILE=full`
-- `AUTH_SCOPES=offline_access openid profile User.Read`
-
-可选：
-- `TG_BOT_TOKEN` + `TG_SEND_ID`：开启 Telegram 通知
-- `IS_API_URLS_EXTEND=true`：调用补充 API（需额外权限）
+1) 检测 `az`，缺失时询问是否自动安装（Ubuntu/Debian）
+2) 自动创建 Entra 应用并写入 `.env`
+3) 暂停等待你完成管理员 consent（必须）
+4) 运行首次授权向导，获取并写入 `token.txt`
+5) 启动容器
+6) 运行自检
 
 ---
 
-## 权限与模式说明
+## GRAPH_BOOTSTRAP_TOKEN（精简版）
 
-默认是 `full`（保留原策略，多接口调用）。
+如果脚本自动获取失败，可手动导出：
 
-如果你想用“最小权限模式”，可手动改：
-- `.env` 里设 `GRAPH_API_PROFILE=lite`
-- 仅给权限：`User.Read` + `offline_access`
+```bash
+az login --allow-no-subscriptions
+export GRAPH_BOOTSTRAP_TOKEN="$(az account get-access-token --resource-type ms-graph --query accessToken -o tsv)"
+```
 
-如果保持 `full`，请按旧版 README 授予对应 Graph 权限（Mail/Files/Sites/Directory 等），否则部分接口会 403。
+然后再跑：
+
+```bash
+gb init
+```
+
+如果账号在无订阅租户，或需要指定租户：
+
+```bash
+az login --tenant <tenant_id> --allow-no-subscriptions
+```
 
 ---
 
-## 目录说明
+## 常用清理与重试
 
-- `main.py`：主调用流程
-- `update.py`：token 刷新与授权交换
-- `auth_cli.py`：首次授权向导
-- `graphctl`：常用运维命令
-- `bootstrap.sh`：基础启动初始化
-- `setup_all_in_one.sh`：一键跑完整流程（建应用+授权+启动+自检）
-- `.env.example`：配置模板
+- 清理当前安装（仅 graph_docker 相关）：
+
+```bash
+gb clean
+```
+
+- 完整卸载（删除安装目录与快捷命令）：
+
+```bash
+gb uninstall
+```
 
 ---
 
-## 注意
+## 关键文件
 
-- 首次授权后会生成/更新 `token.txt`（敏感文件，勿外泄）
-- 若容器网络 DNS 不稳，建议保持 `network_mode: host`（本仓库默认已开启）
+- `install.sh`：总入口（菜单 + 子命令）
+- `setup_all_in_one.sh`：一键全流程初始化
+- `graphctl`：底层运维命令
+- `tenant_init.py`：创建应用与写 `.env`
+- `auth_cli.py`：首次授权
+- `update.py`：token 交换与刷新
+
+---
+
+## 注意事项
+
+- `token.txt`、`.env` 都是敏感信息，勿外泄。
+- 若遇到 `AADSTS50076`，是租户要求 MFA，按提示完成即可。
+- 默认 `full` 模式；如需最小权限模式请改 `.env` 的 `GRAPH_API_PROFILE=lite`。
