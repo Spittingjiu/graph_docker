@@ -204,11 +204,42 @@ uninstall_all() {
   say "卸载完成。"
 }
 
+get_update_status_line() {
+  if [[ ! -d "$INSTALL_DIR/.git" ]]; then
+    echo "更新状态: 未安装（按 1 安装）"
+    return
+  fi
+
+  if ! command -v git >/dev/null 2>&1; then
+    echo "更新状态: 无法检查（git 不可用）"
+    return
+  fi
+
+  local local_head remote_head
+  local_head="$(git -C "$INSTALL_DIR" rev-parse HEAD 2>/dev/null || true)"
+  remote_head="$(git -C "$INSTALL_DIR" ls-remote --heads origin "$BRANCH" 2>/dev/null | awk '{print $1}' | head -n1 || true)"
+
+  if [[ -z "$local_head" || -z "$remote_head" ]]; then
+    echo "更新状态: 无法检查（网络或远端异常）"
+    return
+  fi
+
+  if [[ "$local_head" == "$remote_head" ]]; then
+    echo "更新状态: 当前已是最新版"
+  else
+    echo "更新状态: 检测到新版本（按 2 更新）"
+  fi
+}
+
 show_menu() {
+  local update_line
+  update_line="$(get_update_status_line)"
+
   cat <<EOF
 === graph_docker 运维菜单 ===
 repo: $REPO_URL
 dir : $INSTALL_DIR
+$update_line
 
 请选择操作：
   1) 安装/更新并一键初始化（setup_all_in_one）
