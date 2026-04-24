@@ -70,14 +70,24 @@ az version
 
 #### 第 2 步：登录 Azure
 
+优先用这个（兼容无订阅租户场景）：
+
 ```bash
-az login
+az login --allow-no-subscriptions
 ```
 
 会弹浏览器登录。请用有管理权限的账号登录。
 
 > 如果是服务器无桌面环境：
-> 使用 `az login --use-device-code`，按提示去浏览器输入设备码登录。
+> 使用 `az login --use-device-code --allow-no-subscriptions`，按提示去浏览器输入设备码登录。
+
+如果你遇到 `AADSTS50076`（要求 MFA），这是正常安全策略，不是脚本问题：
+- 按提示在浏览器完成 MFA 即可。
+- 若仍失败，通常是登录到了不对的 tenant，改用：
+
+```bash
+az login --tenant <你的tenant_id> --allow-no-subscriptions
+```
 
 #### 第 3 步：获取 Graph Bootstrap Token
 
