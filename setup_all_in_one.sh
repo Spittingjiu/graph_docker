@@ -16,6 +16,16 @@ need_cmd() {
 need_cmd docker
 need_cmd python3
 
+SUDO=""
+if [[ "${EUID:-$(id -u)}" -ne 0 ]]; then
+  if command -v sudo >/dev/null 2>&1; then
+    SUDO="sudo"
+  else
+    echo "当前不是 root 且未安装 sudo，无法自动安装依赖。"
+    exit 1
+  fi
+fi
+
 if ! docker compose version >/dev/null 2>&1; then
   echo "缺少 docker compose，请先安装。"
   exit 1
@@ -27,6 +37,25 @@ if [[ ! -f .env ]]; then
 fi
 
 if [[ -z "${GRAPH_BOOTSTRAP_TOKEN:-}" ]]; then
+  if ! command -v az >/dev/null 2>&1; then
+    echo "未检测到 Azure CLI（az）。"
+    read -r -p "是否自动安装 Azure CLI（Ubuntu/Debian）? (y/N): " install_az
+    case "${install_az,,}" in
+      y|yes)
+        if ! command -v curl >/dev/null 2>&1; then
+          echo "缺少 curl，先安装 curl..."
+          $SUDO apt-get update -y
+          $SUDO apt-get install -y curl
+        fi
+        echo "正在安装 Azure CLI..."
+        curl -sL https://aka.ms/InstallAzureCLIDeb | $SUDO bash
+        ;;
+      *)
+        echo "你选择了不安装 Azure CLI。将继续等待你手动提供 GRAPH_BOOTSTRAP_TOKEN。"
+        ;;
+    esac
+  fi
+
   if command -v az >/dev/null 2>&1; then
     echo "未检测到 GRAPH_BOOTSTRAP_TOKEN，尝试使用 Azure CLI 自动获取..."
     if ! az account show >/dev/null 2>&1; then
