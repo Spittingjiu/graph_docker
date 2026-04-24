@@ -287,6 +287,32 @@ clear_cron_schedule() {
   fi
 }
 
+generate_random_daily_entries() {
+  local run_cmd="$1"
+  local count="${2:-6}"
+  local picks tmp sorted
+  tmp="$(mktemp)"
+
+  # 生成 08:00-22:59 区间内的不规则时点
+  while [[ $(wc -l < "$tmp") -lt "$count" ]]; do
+    local hour minute
+    hour=$((8 + RANDOM % 15))
+    minute=$((RANDOM % 60))
+    printf "%02d:%02d\n" "$hour" "$minute" >> "$tmp"
+  done
+
+  sorted="$(sort -u "$tmp" | head -n "$count")"
+  rm -f "$tmp"
+
+  while IFS= read -r hm; do
+    [[ -z "$hm" ]] && continue
+    local h m
+    h="${hm%:*}"
+    m="${hm#*:}"
+    echo "$m $h * * * root $run_cmd"
+  done <<< "$sorted"
+}
+
 schedule_menu() {
   ensure_repo
   local run_cmd="cd $INSTALL_DIR && /usr/local/bin/gb up >> $(cron_log_path) 2>&1"
@@ -299,7 +325,7 @@ schedule_menu() {
   1) 午间三次：12:00 / 12:20 / 12:40
   2) 工作日通勤节奏：09:30 / 13:30 / 18:30（周一到周五）
   3) 每日三段：09:00 / 15:00 / 21:00
-  4) 全天低频：08:00-22:00 每2小时一次
+  4) 全天低频随机：08:00-22:59 随机 6 次（每次写入都会重随机）
   5) 非整点拟人：08:17 / 12:43 / 19:26
   6) 工作日+周末混合：工作日12:15，周末11:15/20:15
   7) 仅每日一次：12:00
@@ -322,7 +348,7 @@ EOF
       write_cron_schedule "daily-3block" "0 9,15,21 * * * root $run_cmd"
       ;;
     4)
-      write_cron_schedule "daily-every2h" "0 8-22/2 * * * root $run_cmd"
+      write_cron_schedule "daily-random-6x" "$(generate_random_daily_entries "$run_cmd" 6)"
       ;;
     5)
       write_cron_schedule "humanized-nonhour" "17 8 * * * root $run_cmd
