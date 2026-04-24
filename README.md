@@ -18,7 +18,7 @@
 - 新增首次授权向导（`./graphctl auth`）
 - 新增一键初始化（`./bootstrap.sh`）
 - 新增自检命令（`./graphctl check`）
-- 默认 `lite` 模式，仅需最小权限（`User.Read + offline_access`）
+- 默认 `full` 模式（保留原多接口保活策略）
 
 ---
 
@@ -75,7 +75,7 @@ cp .env.example .env
 
 推荐保留默认：
 - `TENANT_ID=common`
-- `GRAPH_API_PROFILE=lite`
+- `GRAPH_API_PROFILE=full`
 - `AUTH_SCOPES=offline_access openid profile User.Read`
 
 可选：
@@ -84,13 +84,15 @@ cp .env.example .env
 
 ---
 
-## 最小权限建议（自己用）
+## 权限与模式说明
 
-这版默认 `lite` 模式只调 `/me`，建议先只给：
-- `User.Read`
-- `offline_access`
+默认是 `full`（保留原策略，多接口调用）。
 
-后续若要开 `full` 或补充 API，再按需加权限，避免一开始就全量申请。
+如果你想用“最小权限模式”，可手动改：
+- `.env` 里设 `GRAPH_API_PROFILE=lite`
+- 仅给权限：`User.Read` + `offline_access`
+
+如果保持 `full`，请按旧版 README 授予对应 Graph 权限（Mail/Files/Sites/Directory 等），否则部分接口会 403。
 
 ---
 

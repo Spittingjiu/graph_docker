@@ -18,7 +18,7 @@ CLIENT_ID = os.getenv('CLIENT_ID', '').strip()
 CLIENT_SECRET = os.getenv('CLIENT_SECRET', '').strip()
 TENANT_ID = os.getenv('TENANT_ID', 'common').strip() or 'common'
 IS_API_URLS_EXTEND = os.getenv('IS_API_URLS_EXTEND', 'false')
-GRAPH_API_PROFILE = os.getenv('GRAPH_API_PROFILE', 'lite').lower().strip()
+GRAPH_API_PROFILE = os.getenv('GRAPH_API_PROFILE', 'full').lower().strip()
 GRAPH_APIS = os.getenv('GRAPH_APIS', '').strip()
 REQUEST_TIMEOUT = int(os.getenv('REQUEST_TIMEOUT', '15'))
 
