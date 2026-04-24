@@ -7,7 +7,12 @@ from update import Update
 def main():
     print('=== graph_docker 首次授权向导（替代 rclone）===')
     print('1) 打开下面的授权链接，登录并同意权限')
-    auth_url = Update.build_auth_url()
+    try:
+        auth_url = Update.build_auth_url()
+    except Exception as e:
+        print(f'\n❌ 无法生成授权链接: {repr(e)}')
+        print('请先运行 tenant-init（或检查 .env 中 CLIENT_ID）再重试。')
+        raise
     print('\n' + auth_url + '\n')
 
     print('2) 浏览器会跳转到你的 redirect_uri（可能打不开是正常的）')

@@ -44,9 +44,10 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/Spittingjiu/graph_docker
 
 脚本会自动完成：
 1) 创建 Entra 应用并写入 `.env`
-2) 首次授权向导（浏览器登录 + 粘贴回跳 URL）
-3) 启动容器
-4) 自检
+2) 暂停等待你完成管理员 consent（必须）
+3) 首次授权向导（浏览器登录 + 粘贴回跳 URL）
+4) 启动容器
+5) 自检
 
 ---
 
@@ -173,6 +174,7 @@ export GRAPH_BOOTSTRAP_TOKEN='eyJ...'
 ./graphctl auth      # 重新授权
 ./graphctl tenant-init # 自动创建应用并写入.env
 ./graphctl check       # 网络/容器自检
+./graphctl clean       # 一键清除（容器/本地.env/token/本地镜像）
 ```
 
 ---

@@ -224,11 +224,9 @@ def main():
     print(f"CLIENT_ID: {app_id}")
     print("CLIENT_SECRET: 已写入 .env")
     print(f"权限模式: {graph_profile} -> {', '.join(wanted_scopes)}")
-    print("\n下一步：")
-    print("1) 管理员打开下面链接，完成一次 consent:")
+    print("\n[必须先完成] 管理员 consent 链接：")
     print(admin_consent_url)
-    print("2) 然后执行: ./graphctl auth")
-    print("3) 最后执行: ./bootstrap.sh")
+    print("\n请先在浏览器完成 consent，再继续后续步骤。")
 
 
 if __name__ == "__main__":

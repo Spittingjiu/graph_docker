@@ -9,3 +9,4 @@ services:
       - .env
     volumes:
       - ./token.txt:/app/token.txt
+      - ./.env:/app/.env

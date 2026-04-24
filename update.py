@@ -95,6 +95,8 @@ class Update:
 
     @staticmethod
     def build_auth_url(state: str = 'graph_docker'):
+        if not CLIENT_ID:
+            raise RuntimeError('CLIENT_ID 为空，请先完成 tenant-init 或检查 .env')
         params = {
             'client_id': CLIENT_ID,
             'response_type': 'code',
@@ -109,6 +111,8 @@ class Update:
 
     @staticmethod
     def exchange_code_for_refresh_token(code: str):
+        if not CLIENT_ID or not CLIENT_SECRET:
+            raise RuntimeError('CLIENT_ID/CLIENT_SECRET 为空，请先完成 tenant-init 或检查 .env')
         headers = {
             'Content-Type': 'application/x-www-form-urlencoded',
             'User-Agent': UserAgent().random,

@@ -44,7 +44,7 @@ if [[ -z "${GRAPH_BOOTSTRAP_TOKEN:-}" ]]; then
 请二选一：
 
 A) 推荐（Azure CLI）：
-  az login
+  az login --allow-no-subscriptions
   export GRAPH_BOOTSTRAP_TOKEN="$(az account get-access-token --resource-type ms-graph --query accessToken -o tsv)"
 
 B) 手动：
@@ -55,20 +55,24 @@ EOF
   exit 1
 fi
 
-# 自动创建应用 + 写入 .env
-echo "\n[1/4] 自动创建 Entra 应用并写入 .env"
+# 1) 自动创建应用 + 写入 .env
+echo "\n[1/5] 自动创建 Entra 应用并写入 .env"
 docker compose run --rm -e GRAPH_BOOTSTRAP_TOKEN="$GRAPH_BOOTSTRAP_TOKEN" ms_graph_docker python3 /app/tenant_init.py
 
-# 自动授权向导（需要人工登录 + 粘贴回跳 URL）
-echo "\n[2/4] 首次授权向导（请按提示完成浏览器授权）"
+# 2) 强制停顿：等待管理员 consent
+echo "\n[2/5] 请先完成管理员 consent，再继续"
+read -r -p "浏览器完成 consent 后，按回车继续..."
+
+# 3) 首次授权向导（需要人工登录 + 粘贴回跳 URL）
+echo "\n[3/5] 首次授权向导"
 docker compose run --rm ms_graph_docker python3 /app/auth_cli.py
 
-# 启动容器
-echo "\n[3/4] 启动服务"
+# 4) 启动容器
+echo "\n[4/5] 启动服务"
 docker compose up -d
 
-# 自检
-echo "\n[4/4] 运行自检"
+# 5) 自检
+echo "\n[5/5] 运行自检"
 ./graphctl check
 
 echo "\n✅ 全部完成。"

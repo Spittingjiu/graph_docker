@@ -45,6 +45,18 @@ PY"
     echo "[check] container status"
     docker compose ps
     ;;
+  clean)
+    echo "将执行一键清除：停止容器 + 删除本地数据(.env/token) + 删除镜像"
+    read -r -p "确认继续？(yes/no): " ans
+    if [[ "$ans" != "yes" ]]; then
+      echo "已取消"
+      exit 0
+    fi
+    docker compose down --remove-orphans || true
+    docker image rm -f graph_docker:local >/dev/null 2>&1 || true
+    rm -f .env token.txt
+    echo "清除完成"
+    ;;
   help|*)
     cat <<'EOF'
 用法: ./graphctl <command>
@@ -56,6 +68,7 @@ commands:
   auth        运行首次授权向导（替代 rclone）
   tenant-init 自动创建应用与 .env（需 GRAPH_BOOTSTRAP_TOKEN）
   check       运行自检（网络/容器）
+  clean       一键清除（停止容器/删.env和token/删本地镜像）
 EOF
     ;;
 esac
