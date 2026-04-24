@@ -84,17 +84,33 @@ is_already_initialized() {
   [[ -n "$cid" && -n "$csec" ]]
 }
 
+has_token() {
+  [[ -s "$INSTALL_DIR/token.txt" ]]
+}
+
 install_or_update_and_init() {
   ensure_repo
+
   if is_already_initialized; then
-    say "检测到已初始化（.env 存在 CLIENT_ID/CLIENT_SECRET），跳过 tenant-init。"
-    say "改为执行：启动 + 自检"
+    say "检测到已存在初始化配置（.env）。"
+
+    if has_token; then
+      say "检测到已存在 token.txt，直接执行：启动 + 自检"
+      ./graphctl up
+      ./graphctl check
+      return
+    fi
+
+    say "检测到 .env 但未发现 token.txt，自动进入授权向导（auth）..."
+    ./graphctl auth
+    say "授权完成后执行：启动 + 自检"
     ./graphctl up
     ./graphctl check
-  else
-    say "未检测到初始化配置，执行一键全流程初始化..."
-    ./setup_all_in_one.sh
+    return
   fi
+
+  say "未检测到可复用配置，执行一键全流程初始化..."
+  ./setup_all_in_one.sh
 }
 
 uninstall_all() {
