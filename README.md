@@ -58,7 +58,7 @@ gb uninstall
 
 `gb` 菜单选 1 时按下面顺序自动判断：
 
-1) 有 `.env` + `token.txt` → 直接 `up + check`
+1) 有 `.env` + `token.txt` → 先校验 token 可用；可用才 `up + check`
 2) 有 `.env` 但没 `token.txt` → 自动先 `auth`，再 `up + check`
 3) `.env` 也没有 → 执行完整初始化流程（tenant-init）
 
