@@ -16,63 +16,59 @@
 
 - 不再需要下载 `rclone`
 - 新增首次授权向导（`./graphctl auth`）
-- 新增一键初始化（`./bootstrap.sh`）
+- 新增一键全流程初始化（`./setup_all_in_one.sh`）
 - 新增自检命令（`./graphctl check`）
 - 默认 `full` 模式（保留原多接口保活策略）
 
 ---
 
-## 快速开始（3 步）
+## 一键初始化（推荐）
 
-### A. 全自动初始化（推荐）
-
-适合你说的“尽量少手动点”：
+你只需要执行一次：
 
 ```bash
-# 先准备一个具备 Graph 应用管理权限的 bootstrap token
-export GRAPH_BOOTSTRAP_TOKEN='你的token'
+./setup_all_in_one.sh
+```
 
-# 自动创建应用 + 配权限 + 生成secret + 写入.env
+脚本会自动完成：
+1) 创建 Entra 应用并写入 `.env`
+2) 首次授权向导（浏览器登录 + 粘贴回跳 URL）
+3) 启动容器
+4) 自检
+
+---
+
+## GRAPH_BOOTSTRAP_TOKEN 怎么获取
+
+这个 token 用来调用 Microsoft Graph 管理 API（自动创应用/配权限），推荐用 Azure CLI 获取。
+
+### 方式 A：Azure CLI（推荐）
+
+```bash
+az login
+export GRAPH_BOOTSTRAP_TOKEN="$(az account get-access-token --resource-type ms-graph --query accessToken -o tsv)"
+```
+
+### 方式 B：手动获取
+
+你也可以从已有管理工具拿到 Graph Access Token，然后：
+
+```bash
+export GRAPH_BOOTSTRAP_TOKEN='eyJ...'
+```
+
+> 注意：
+> - 这个 token 必须是有权限管理应用注册的管理员账号签发。
+> - token 有时效，过期后重新获取一次即可。
+
+---
+
+## 兼容分步流程（可选）
+
+```bash
 ./graphctl tenant-init
-```
-
-然后按提示仅做一次管理员 consent，接着执行：
-
-```bash
 ./graphctl auth
 ./bootstrap.sh
-```
-
-### B. 手动初始化（兼容旧流程）
-
-### 1) 准备配置
-
-```bash
-cp .env.example .env
-# 编辑 .env 填 CLIENT_ID / CLIENT_SECRET
-```
-
-### 2) 首次授权（替代 rclone）
-
-```bash
-./graphctl auth
-```
-
-执行后会打印授权链接：
-- 浏览器打开并登录同意
-- 复制回跳 URL 粘贴回终端
-- 自动写入 `token.txt`
-
-### 3) 启动
-
-```bash
-./bootstrap.sh
-```
-
-或：
-
-```bash
-./graphctl up
 ```
 
 ---
@@ -124,7 +120,8 @@ cp .env.example .env
 - `update.py`：token 刷新与授权交换
 - `auth_cli.py`：首次授权向导
 - `graphctl`：常用运维命令
-- `bootstrap.sh`：一键初始化
+- `bootstrap.sh`：基础启动初始化
+- `setup_all_in_one.sh`：一键跑完整流程（建应用+授权+启动+自检）
 - `.env.example`：配置模板
 
 ---
