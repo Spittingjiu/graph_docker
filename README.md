@@ -22,7 +22,7 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/Spittingjiu/graph_docker
 gb
 ```
 
-打开运维菜单。
+打开运维菜单（会显示更新状态：有新版本会提示按 2 更新）。
 
 ---
 
