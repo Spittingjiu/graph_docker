@@ -88,6 +88,58 @@ has_token() {
   [[ -s "$INSTALL_DIR/token.txt" ]]
 }
 
+token_is_usable() {
+  docker compose run --rm ms_graph_docker sh -lc "python3 - <<'PY'
+import os, sys
+import requests
+
+client_id = os.getenv('CLIENT_ID', '').strip()
+client_secret = os.getenv('CLIENT_SECRET', '').strip()
+tenant_id = os.getenv('TENANT_ID', 'common').strip() or 'common'
+redirect_uri = os.getenv('REDIRECT_URI', 'http://localhost:53682/').strip() or 'http://localhost:53682/'
+
+if not client_id or not client_secret:
+    print('missing CLIENT_ID/CLIENT_SECRET')
+    sys.exit(1)
+
+token_path = '/app/token.txt'
+if not os.path.exists(token_path):
+    print('token.txt not found')
+    sys.exit(1)
+
+with open(token_path, 'r', encoding='utf-8') as f:
+    refresh_token = f.read().strip()
+
+if len(refresh_token) < 10:
+    print('refresh token empty/too short')
+    sys.exit(1)
+
+token_url = f'https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token'
+data = {
+    'grant_type': 'refresh_token',
+    'refresh_token': refresh_token,
+    'client_id': client_id,
+    'client_secret': client_secret,
+    'redirect_uri': redirect_uri,
+}
+
+try:
+    r = requests.post(token_url, data=data, timeout=15)
+    if r.status_code != 200:
+        print(f'token refresh failed: {r.status_code}')
+        sys.exit(1)
+    js = r.json()
+    if not js.get('refresh_token'):
+        print('token refresh response missing refresh_token')
+        sys.exit(1)
+    print('token refresh check: ok')
+    sys.exit(0)
+except Exception as e:
+    print(f'token refresh exception: {e!r}')
+    sys.exit(1)
+PY" >/dev/null 2>&1
+}
+
 install_or_update_and_init() {
   ensure_repo
 
@@ -95,7 +147,16 @@ install_or_update_and_init() {
     say "检测到已存在初始化配置（.env）。"
 
     if has_token; then
-      say "检测到已存在 token.txt，直接执行：启动 + 自检"
+      say "检测到 token.txt，先做可用性检查..."
+      if token_is_usable; then
+        say "token 可用，执行：启动 + 自检"
+        ./graphctl up
+        ./graphctl check
+        return
+      fi
+      say "token 不可用，自动进入授权向导（auth）..."
+      ./graphctl auth
+      say "授权完成后执行：启动 + 自检"
       ./graphctl up
       ./graphctl check
       return
