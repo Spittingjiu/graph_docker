@@ -37,6 +37,7 @@ gb
 - 查看日志（logs）
 - 一键清除（clean）
 - 卸载并清理（uninstall）
+- 定时保活计划（schedule，含多预设 + 一键清除）
 
 你也可以直接用命令：
 
@@ -50,6 +51,9 @@ gb up
 gb logs 200
 gb clean
 gb uninstall
+gb schedule
+gb schedule-show
+gb schedule-clear
 ```
 
 ---
