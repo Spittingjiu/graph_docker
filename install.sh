@@ -231,6 +231,137 @@ get_update_status_line() {
   fi
 }
 
+cron_file_path() {
+  echo "/etc/cron.d/graph_docker"
+}
+
+cron_log_path() {
+  echo "/var/log/graph_docker_cron.log"
+}
+
+write_cron_schedule() {
+  local schedule_name="$1"
+  local cron_entries="$2"
+  local cron_file
+  cron_file="$(cron_file_path)"
+  local tmp
+  tmp="$(mktemp)"
+
+  cat > "$tmp" <<EOF
+# graph_docker scheduled keepalive
+# profile: $schedule_name
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+$cron_entries
+EOF
+
+  sudo mv "$tmp" "$cron_file"
+  sudo chmod 644 "$cron_file"
+  touch "$(cron_log_path)" || true
+  say "已写入定时计划：$schedule_name"
+  say "当前定时文件: $cron_file"
+  say "日志文件: $(cron_log_path)"
+}
+
+show_cron_schedule() {
+  local cron_file
+  cron_file="$(cron_file_path)"
+  if [[ -f "$cron_file" ]]; then
+    echo "---- 当前定时计划 ----"
+    cat "$cron_file"
+    echo "---------------------"
+  else
+    echo "当前未配置定时计划"
+  fi
+}
+
+clear_cron_schedule() {
+  local cron_file
+  cron_file="$(cron_file_path)"
+  if [[ -f "$cron_file" ]]; then
+    sudo rm -f "$cron_file"
+    say "已清除定时计划"
+  else
+    say "未检测到定时计划，无需清除"
+  fi
+}
+
+schedule_menu() {
+  ensure_repo
+  local run_cmd="cd $INSTALL_DIR && /usr/local/bin/gb up >> $(cron_log_path) 2>&1"
+
+  cat <<EOF
+=== 定时保活计划 ===
+目标：贴近人类使用节奏，定时确保服务可用
+
+请选择：
+  1) 午间三次：12:00 / 12:20 / 12:40
+  2) 工作日通勤节奏：09:30 / 13:30 / 18:30（周一到周五）
+  3) 每日三段：09:00 / 15:00 / 21:00
+  4) 全天低频：08:00-22:00 每2小时一次
+  5) 非整点拟人：08:17 / 12:43 / 19:26
+  6) 工作日+周末混合：工作日12:15，周末11:15/20:15
+  7) 仅每日一次：12:00
+  8) 每日四次：08:30 / 12:00 / 16:30 / 21:30
+  9) 自定义 cron 表达式（你自己输入）
+  s) 查看当前定时计划
+  c) 清除定时计划
+  q) 返回上一级
+EOF
+
+  read -r -p "输入选项: " sopt
+  case "$sopt" in
+    1)
+      write_cron_schedule "lunch-3x" "0,20,40 12 * * * root $run_cmd"
+      ;;
+    2)
+      write_cron_schedule "workday-commute" "30 9,13,18 * * 1-5 root $run_cmd"
+      ;;
+    3)
+      write_cron_schedule "daily-3block" "0 9,15,21 * * * root $run_cmd"
+      ;;
+    4)
+      write_cron_schedule "daily-every2h" "0 8-22/2 * * * root $run_cmd"
+      ;;
+    5)
+      write_cron_schedule "humanized-nonhour" "17 8 * * * root $run_cmd
+43 12 * * * root $run_cmd
+26 19 * * * root $run_cmd"
+      ;;
+    6)
+      write_cron_schedule "weekday-weekend-mix" "15 12 * * 1-5 root $run_cmd
+15 11,20 * * 6,0 root $run_cmd"
+      ;;
+    7)
+      write_cron_schedule "daily-once" "0 12 * * * root $run_cmd"
+      ;;
+    8)
+      write_cron_schedule "daily-4x" "30 8,16,21 * * * root $run_cmd
+0 12 * * * root $run_cmd"
+      ;;
+    9)
+      read -r -p "输入 cron（五段）例如: 0 12 * * * : " custom_expr
+      if [[ -z "$custom_expr" ]]; then
+        say "未输入，已取消"
+      else
+        write_cron_schedule "custom" "$custom_expr root $run_cmd"
+      fi
+      ;;
+    s|S)
+      show_cron_schedule
+      ;;
+    c|C)
+      clear_cron_schedule
+      ;;
+    q|Q)
+      ;;
+    *)
+      say "无效输入"
+      ;;
+  esac
+}
+
 show_menu() {
   local update_line
   update_line="$(get_update_status_line)"
@@ -251,6 +382,7 @@ $update_line
   7) 查看日志（graphctl logs）
   8) 一键清除（graphctl clean）
   9) 卸载并清理（install.sh uninstall）
+ 10) 定时保活计划（新增）
 EOF
 }
 
@@ -286,10 +418,19 @@ case "$ACTION" in
   uninstall)
     uninstall_all
     ;;
+  schedule)
+    schedule_menu
+    ;;
+  schedule-show)
+    show_cron_schedule
+    ;;
+  schedule-clear)
+    clear_cron_schedule
+    ;;
   "")
     clear_screen
     show_menu
-    read -r -p "输入 1-9: " choice
+    read -r -p "输入 1-10: " choice
     case "$choice" in
       1) install_or_update_and_init ;;
       2) ensure_repo ;;
@@ -300,21 +441,25 @@ case "$ACTION" in
       7) ensure_repo; ./graphctl logs 100 ;;
       8) run_graphctl clean ;;
       9) uninstall_all ;;
+      10) schedule_menu ;;
       *) say "无效输入"; exit 1 ;;
     esac
     ;;
   *)
     say "用法:"
-    say "  ./install.sh              # 菜单模式"
-    say "  ./install.sh install      # 安装/更新+一键初始化"
-    say "  ./install.sh update       # 仅安装/更新"
-    say "  ./install.sh auth         # 首次授权向导"
-    say "  ./install.sh init         # 一键全流程初始化"
-    say "  ./install.sh check        # 自检"
-    say "  ./install.sh up           # 启动"
-    say "  ./install.sh logs [lines] # 日志"
-    say "  ./install.sh clean        # 一键清除"
-    say "  ./install.sh uninstall    # 卸载清理"
+    say "  ./install.sh                    # 菜单模式"
+    say "  ./install.sh install            # 安装/更新+一键初始化"
+    say "  ./install.sh update             # 仅安装/更新"
+    say "  ./install.sh auth               # 首次授权向导"
+    say "  ./install.sh init               # 一键全流程初始化"
+    say "  ./install.sh check              # 自检"
+    say "  ./install.sh up                 # 启动"
+    say "  ./install.sh logs [lines]       # 日志"
+    say "  ./install.sh clean              # 一键清除"
+    say "  ./install.sh uninstall          # 卸载清理"
+    say "  ./install.sh schedule           # 定时计划菜单"
+    say "  ./install.sh schedule-show      # 查看定时计划"
+    say "  ./install.sh schedule-clear     # 清除定时计划"
     exit 1
     ;;
 esac
