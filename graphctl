@@ -19,6 +19,14 @@ case "$cmd" in
   auth)
     docker compose run --rm ms_graph_docker python3 /app/auth_cli.py
     ;;
+  tenant-init)
+    if [[ -z "${GRAPH_BOOTSTRAP_TOKEN:-}" ]]; then
+      echo "请先导出 GRAPH_BOOTSTRAP_TOKEN（具备 Graph 应用管理权限）"
+      echo "例如: export GRAPH_BOOTSTRAP_TOKEN='eyJ...'"
+      exit 1
+    fi
+    docker compose run --rm -e GRAPH_BOOTSTRAP_TOKEN="$GRAPH_BOOTSTRAP_TOKEN" ms_graph_docker python3 /app/tenant_init.py
+    ;;
   check)
     echo "[check] compose config"
     docker compose config >/dev/null && echo "OK"
@@ -42,11 +50,12 @@ PY"
 用法: ./graphctl <command>
 
 commands:
-  up       启动容器
-  down     停止容器
-  logs     查看日志（默认100行，支持: ./graphctl logs 200）
-  auth     运行首次授权向导（替代 rclone）
-  check    运行自检（网络/容器）
+  up          启动容器
+  down        停止容器
+  logs        查看日志（默认100行，支持: ./graphctl logs 200）
+  auth        运行首次授权向导（替代 rclone）
+  tenant-init 自动创建应用与 .env（需 GRAPH_BOOTSTRAP_TOKEN）
+  check       运行自检（网络/容器）
 EOF
     ;;
 esac

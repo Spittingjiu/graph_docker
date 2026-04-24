@@ -24,6 +24,27 @@
 
 ## 快速开始（3 步）
 
+### A. 全自动初始化（推荐）
+
+适合你说的“尽量少手动点”：
+
+```bash
+# 先准备一个具备 Graph 应用管理权限的 bootstrap token
+export GRAPH_BOOTSTRAP_TOKEN='你的token'
+
+# 自动创建应用 + 配权限 + 生成secret + 写入.env
+./graphctl tenant-init
+```
+
+然后按提示仅做一次管理员 consent，接着执行：
+
+```bash
+./graphctl auth
+./bootstrap.sh
+```
+
+### B. 手动初始化（兼容旧流程）
+
 ### 1) 准备配置
 
 ```bash
@@ -63,7 +84,8 @@ cp .env.example .env
 ./graphctl down      # 停止
 ./graphctl logs      # 看日志
 ./graphctl auth      # 重新授权
-./graphctl check     # 网络/容器自检
+./graphctl tenant-init # 自动创建应用并写入.env
+./graphctl check       # 网络/容器自检
 ```
 
 ---
