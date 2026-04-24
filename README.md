@@ -57,23 +57,10 @@
 
 ### 方式 A：Azure CLI（推荐，最简单）
 
-#### 第 1 步：安装 Azure CLI
+#### 第 1 步：安装 Azure CLI（Ubuntu / Debian）
 
-- Ubuntu / Debian：
 ```bash
 curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
-```
-
-- RHEL / CentOS：
-```bash
-sudo rpm --import https://packages.microsoft.com/keys/microsoft.asc
-sudo dnf install -y https://packages.microsoft.com/config/rhel/9.0/packages-microsoft-prod.rpm
-sudo dnf install -y azure-cli
-```
-
-- macOS（brew）：
-```bash
-brew update && brew install azure-cli
 ```
 
 装完先检查：
