@@ -325,7 +325,7 @@ schedule_menu() {
   1) 午间三次：12:00 / 12:20 / 12:40
   2) 工作日通勤节奏：09:30 / 13:30 / 18:30（周一到周五）
   3) 每日三段：09:00 / 15:00 / 21:00
-  4) 全天低频随机：08:00-22:59 随机 6 次（每次写入都会重随机）
+  4) 全天低频随机：08:00-22:59 随机 5 次（每次写入都会重随机）
   5) 非整点拟人：08:17 / 12:43 / 19:26
   6) 工作日+周末混合：工作日12:15，周末11:15/20:15
   7) 仅每日一次：12:00
@@ -348,7 +348,7 @@ EOF
       write_cron_schedule "daily-3block" "0 9,15,21 * * * root $run_cmd"
       ;;
     4)
-      write_cron_schedule "daily-random-6x" "$(generate_random_daily_entries "$run_cmd" 6)"
+      write_cron_schedule "daily-random-5x" "$(generate_random_daily_entries "$run_cmd" 5)"
       ;;
     5)
       write_cron_schedule "humanized-nonhour" "17 8 * * * root $run_cmd
