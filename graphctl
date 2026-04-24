@@ -8,7 +8,7 @@ cmd="${1:-help}"
 
 case "$cmd" in
   up)
-    docker compose up -d
+    docker compose up -d --build
     ;;
   down)
     docker compose down
@@ -129,7 +129,7 @@ PY" 2>&1)"
 用法: ./graphctl <command>
 
 commands:
-  up          启动容器
+  up          启动容器（含重建镜像，确保代码更新生效）
   down        停止容器
   logs        查看日志（默认100行，支持: ./graphctl logs 200）
   auth        运行首次授权向导（替代 rclone）
