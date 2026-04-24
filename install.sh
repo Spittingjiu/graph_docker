@@ -25,7 +25,7 @@ auto_install_deps() {
   fi
 }
 
-install_or_update() {
+ensure_repo() {
   auto_install_deps
 
   if [[ -d "$INSTALL_DIR/.git" ]]; then
@@ -42,8 +42,17 @@ install_or_update() {
 
   cd "$INSTALL_DIR"
   chmod +x setup_all_in_one.sh graphctl bootstrap.sh auth_cli.py tenant_init.py install.sh || true
+}
 
-  say "开始执行一键初始化..."
+run_graphctl() {
+  local sub="$1"
+  ensure_repo
+  ./graphctl "$sub"
+}
+
+install_or_update_and_init() {
+  ensure_repo
+  say "开始执行一键全流程初始化..."
   ./setup_all_in_one.sh
 }
 
@@ -67,7 +76,6 @@ uninstall_all() {
   # 兼容旧容器名
   docker rm -f ms_graph_docker >/dev/null 2>&1 || true
 
-  # 删除目录
   if [[ -d "$INSTALL_DIR" ]]; then
     rm -rf "$INSTALL_DIR"
   fi
@@ -77,42 +85,83 @@ uninstall_all() {
 
 show_menu() {
   cat <<EOF
-=== graph_docker 安装器 ===
+=== graph_docker 运维菜单 ===
 repo: $REPO_URL
 dir : $INSTALL_DIR
 
 请选择操作：
-  1) 安装/更新并初始化
-  2) 卸载并清理
+  1) 安装/更新并一键初始化（setup_all_in_one）
+  2) 仅安装/更新仓库
+  3) 首次授权向导（graphctl auth）
+  4) 一键全流程初始化（setup_all_in_one）
+  5) 自检（graphctl check）
+  6) 启动服务（graphctl up）
+  7) 查看日志（graphctl logs）
+  8) 一键清除（graphctl clean）
+  9) 卸载并清理（install.sh uninstall）
 EOF
 }
 
-# 支持非交互参数
-#   ./install.sh install
-#   ./install.sh uninstall
 ACTION="${1:-}"
 
 case "$ACTION" in
   install)
-    install_or_update
+    install_or_update_and_init
+    ;;
+  update)
+    ensure_repo
+    ;;
+  auth)
+    run_graphctl auth
+    ;;
+  init)
+    ensure_repo
+    ./setup_all_in_one.sh
+    ;;
+  check)
+    run_graphctl check
+    ;;
+  up)
+    run_graphctl up
+    ;;
+  logs)
+    ensure_repo
+    ./graphctl logs "${2:-100}"
+    ;;
+  clean)
+    run_graphctl clean
     ;;
   uninstall)
     uninstall_all
     ;;
   "")
     show_menu
-    read -r -p "输入 1 或 2: " choice
+    read -r -p "输入 1-9: " choice
     case "$choice" in
-      1) install_or_update ;;
-      2) uninstall_all ;;
+      1) install_or_update_and_init ;;
+      2) ensure_repo ;;
+      3) run_graphctl auth ;;
+      4) ensure_repo; ./setup_all_in_one.sh ;;
+      5) run_graphctl check ;;
+      6) run_graphctl up ;;
+      7) ensure_repo; ./graphctl logs 100 ;;
+      8) run_graphctl clean ;;
+      9) uninstall_all ;;
       *) say "无效输入"; exit 1 ;;
     esac
     ;;
   *)
     say "用法:"
-    say "  ./install.sh            # 菜单模式"
-    say "  ./install.sh install    # 安装/更新"
-    say "  ./install.sh uninstall  # 卸载清理"
+    say "  ./install.sh              # 菜单模式"
+    say "  ./install.sh install      # 安装/更新+一键初始化"
+    say "  ./install.sh update       # 仅安装/更新"
+    say "  ./install.sh auth         # 首次授权向导"
+    say "  ./install.sh init         # 一键全流程初始化"
+    say "  ./install.sh check        # 自检"
+    say "  ./install.sh up           # 启动"
+    say "  ./install.sh logs [lines] # 日志"
+    say "  ./install.sh clean        # 一键清除"
+    say "  ./install.sh uninstall    # 卸载清理"
     exit 1
     ;;
 esac

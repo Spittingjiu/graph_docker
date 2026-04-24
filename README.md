@@ -33,8 +33,15 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/Spittingjiu/graph_docker
 ```
 
 菜单含：
-- `1` 安装/更新并初始化
-- `2` 卸载并清理
+- `1` 安装/更新并一键初始化
+- `2` 仅安装/更新仓库
+- `3` 首次授权向导（auth）
+- `4` 一键全流程初始化（setup_all_in_one）
+- `5` 自检（check）
+- `6` 启动服务（up）
+- `7` 查看日志（logs）
+- `8` 一键清除（clean）
+- `9` 卸载并清理
 
 它会自动把仓库放到 `/opt/graph_docker`。
 
@@ -182,10 +189,17 @@ export GRAPH_BOOTSTRAP_TOKEN='eyJ...'
 ./graphctl clean       # 一键清除（容器/本地.env/token/本地镜像）
 ```
 
-如需整套卸载（包含删除安装目录）：
+也支持非交互命令：
 
 ```bash
-cd /opt/graph_docker
+./install.sh install
+./install.sh update
+./install.sh auth
+./install.sh init
+./install.sh check
+./install.sh up
+./install.sh logs 200
+./install.sh clean
 ./install.sh uninstall
 ```
 
