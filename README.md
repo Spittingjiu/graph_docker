@@ -2,9 +2,13 @@
 
 轻量的 Microsoft Graph 保活工具（自维护版）。
 
-> 维护说明
+> 转载与二次维护说明
 >
-> 本仓库由 `Spittingjiu/ms_graph_docker` 迁移而来，后续功能迭代、修复与发布由本仓库独立维护。
+> 本仓库由 `Spittingjiu/ms_graph_docker` 迁移而来，原始项目来源：
+> - 原仓库（fork 来源）：`https://github.com/comdotwww/ms_graph_docker`
+> - 迁移来源（本账号 fork）：`https://github.com/Spittingjiu/ms_graph_docker`
+>
+> 从本仓库开始，后续功能迭代、修复与发布将由我们独立维护。
 
 ---
 
