@@ -26,15 +26,17 @@
 
 ### 场景 A：你本机还没有仓库（推荐用这个）
 
-直接执行远程安装器：
+直接执行远程安装器（菜单模式）：
 
 ```bash
 bash -c "$(curl -fsSL https://raw.githubusercontent.com/Spittingjiu/graph_docker/master/install.sh)"
 ```
 
-它会自动：
-1) 拉取/更新仓库到 `/opt/graph_docker`
-2) 进入目录并执行 `./setup_all_in_one.sh`
+菜单含：
+- `1` 安装/更新并初始化
+- `2` 卸载并清理
+
+它会自动把仓库放到 `/opt/graph_docker`。
 
 ### 场景 B：你已经在仓库目录里
 
@@ -167,14 +169,24 @@ export GRAPH_BOOTSTRAP_TOKEN='eyJ...'
 
 ## 常用命令
 
+> 注意：`graphctl` 在安装目录里（默认 `/opt/graph_docker`）。
+> 先执行：`cd /opt/graph_docker`
+
 ```bash
-./graphctl up        # 启动
-./graphctl down      # 停止
-./graphctl logs      # 看日志
-./graphctl auth      # 重新授权
+./graphctl up          # 启动
+./graphctl down        # 停止
+./graphctl logs        # 看日志
+./graphctl auth        # 重新授权
 ./graphctl tenant-init # 自动创建应用并写入.env
 ./graphctl check       # 网络/容器自检
 ./graphctl clean       # 一键清除（容器/本地.env/token/本地镜像）
+```
+
+如需整套卸载（包含删除安装目录）：
+
+```bash
+cd /opt/graph_docker
+./install.sh uninstall
 ```
 
 ---
