@@ -7,6 +7,14 @@ BRANCH="${GRAPH_DOCKER_BRANCH:-master}"
 
 say() { echo "$*"; }
 
+clear_screen() {
+  if command -v clear >/dev/null 2>&1; then
+    clear
+  else
+    printf '\033c'
+  fi
+}
+
 auto_install_deps() {
   if ! command -v git >/dev/null 2>&1 || ! command -v curl >/dev/null 2>&1; then
     say "检测到缺少 git/curl，尝试自动安装（Ubuntu/Debian）..."
@@ -156,6 +164,7 @@ case "$ACTION" in
     uninstall_all
     ;;
   "")
+    clear_screen
     show_menu
     read -r -p "输入 1-9: " choice
     case "$choice" in
