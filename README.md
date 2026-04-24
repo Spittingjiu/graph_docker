@@ -24,7 +24,19 @@
 
 ## 一键初始化（推荐）
 
-你只需要执行一次：
+### 场景 A：你本机还没有仓库（推荐用这个）
+
+直接执行远程安装器：
+
+```bash
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/Spittingjiu/graph_docker/master/install.sh)"
+```
+
+它会自动：
+1) 拉取/更新仓库到 `/opt/graph_docker`
+2) 进入目录并执行 `./setup_all_in_one.sh`
+
+### 场景 B：你已经在仓库目录里
 
 ```bash
 ./setup_all_in_one.sh
