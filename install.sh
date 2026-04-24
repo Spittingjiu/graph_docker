@@ -76,10 +76,25 @@ run_graphctl() {
   ./graphctl "$sub"
 }
 
+is_already_initialized() {
+  [[ -f "$INSTALL_DIR/.env" ]] || return 1
+  local cid csec
+  cid="$(grep -E '^CLIENT_ID=' "$INSTALL_DIR/.env" | head -n1 | cut -d= -f2- || true)"
+  csec="$(grep -E '^CLIENT_SECRET=' "$INSTALL_DIR/.env" | head -n1 | cut -d= -f2- || true)"
+  [[ -n "$cid" && -n "$csec" ]]
+}
+
 install_or_update_and_init() {
   ensure_repo
-  say "开始执行一键全流程初始化..."
-  ./setup_all_in_one.sh
+  if is_already_initialized; then
+    say "检测到已初始化（.env 存在 CLIENT_ID/CLIENT_SECRET），跳过 tenant-init。"
+    say "改为执行：启动 + 自检"
+    ./graphctl up
+    ./graphctl check
+  else
+    say "未检测到初始化配置，执行一键全流程初始化..."
+    ./setup_all_in_one.sh
+  fi
 }
 
 uninstall_all() {
