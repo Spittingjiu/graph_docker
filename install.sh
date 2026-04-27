@@ -33,7 +33,7 @@ auto_install_deps() {
   fi
 }
 
-ensure_repo() {
+ensure_repo_update() {
   auto_install_deps
 
   if [[ -d "$INSTALL_DIR/.git" ]]; then
@@ -41,6 +41,25 @@ ensure_repo() {
     git -C "$INSTALL_DIR" fetch --all --tags
     git -C "$INSTALL_DIR" checkout "$BRANCH"
     git -C "$INSTALL_DIR" pull --ff-only origin "$BRANCH"
+  else
+    say "首次安装，克隆仓库..."
+    sudo mkdir -p "$(dirname "$INSTALL_DIR")"
+    sudo chown -R "$(id -u):$(id -g)" "$(dirname "$INSTALL_DIR")"
+    git clone --branch "$BRANCH" "$REPO_URL" "$INSTALL_DIR"
+  fi
+
+  cd "$INSTALL_DIR"
+  chmod +x setup_all_in_one.sh graphctl bootstrap.sh auth_cli.py tenant_init.py install.sh || true
+
+  # 安装/更新 gb 快捷命令
+  install_gb_alias
+}
+
+ensure_repo() {
+  auto_install_deps
+
+  if [[ -d "$INSTALL_DIR/.git" ]]; then
+    say "目录已存在，使用本地代码（不自动更新）..."
   else
     say "首次安装，克隆仓库..."
     sudo mkdir -p "$(dirname "$INSTALL_DIR")"
@@ -141,7 +160,7 @@ PY" >/dev/null 2>&1
 }
 
 install_or_update_and_init() {
-  ensure_repo
+  ensure_repo_update
 
   if is_already_initialized; then
     say "检测到已存在初始化配置（.env）。"
@@ -419,7 +438,7 @@ case "$ACTION" in
     install_or_update_and_init
     ;;
   update)
-    ensure_repo
+    ensure_repo_update
     ;;
   auth)
     run_graphctl auth
@@ -459,7 +478,7 @@ case "$ACTION" in
     read -r -p "输入 1-10: " choice
     case "$choice" in
       1) install_or_update_and_init ;;
-      2) ensure_repo ;;
+      2) ensure_repo_update ;;
       3) run_graphctl auth ;;
       4) ensure_repo; ./setup_all_in_one.sh ;;
       5) run_graphctl check ;;
