@@ -8,6 +8,8 @@ cmd="${1:-help}"
 
 case "$cmd" in
   up)
+    mkdir -p data
+    touch token.txt
     docker compose up -d --build
     ;;
   down)
@@ -16,7 +18,33 @@ case "$cmd" in
   logs)
     docker compose logs -f --tail="${2:-100}"
     ;;
+  test|run-once)
+    mkdir -p data
+    touch token.txt
+    echo "[test] 正在以单次批处理模式运行一次测试..."
+    docker compose run --rm -e RUN_MODE=once ms_graph_docker python3 -u main.py
+    ;;
+  status)
+    echo "====== 服务状态 ======"
+    docker compose ps || true
+    echo
+    echo "====== Token 状态 ======"
+    token_file="token.txt"
+    [[ -f "data/token.txt" ]] && token_file="data/token.txt"
+    if [[ -f "$token_file" && -s "$token_file" ]]; then
+      token_len="$(wc -c < "$token_file" | tr -d ' ')"
+      token_mod="$(date -r "$token_file" '+%Y-%m-%d %H:%M:%S' 2>/dev/null || stat -c '%y' "$token_file" 2>/dev/null || echo '未知')"
+      echo "文件: $token_file (存在，大小: ${token_len} 字节，更新时间: ${token_mod})"
+    else
+      echo "文件: $token_file (不存在或为空，请执行 ./graphctl auth 进行首次授权)"
+    fi
+    echo
+    echo "====== 最近日志 (最后 15 行) ======"
+    docker compose logs --tail=15 2>/dev/null || echo "暂无日志"
+    ;;
   auth)
+    mkdir -p data
+    touch token.txt
     docker compose run --rm ms_graph_docker python3 /app/auth_cli.py
     ;;
   tenant-init)
@@ -25,23 +53,17 @@ case "$cmd" in
       echo "例如: export GRAPH_BOOTSTRAP_TOKEN='eyJ...'"
       exit 1
     fi
+    mkdir -p data
+    touch token.txt
     docker compose run --rm -e GRAPH_BOOTSTRAP_TOKEN="$GRAPH_BOOTSTRAP_TOKEN" ms_graph_docker python3 /app/tenant_init.py
     ;;
   check)
     failures=()
     warnings=()
 
-    echo "[check] 执行自检中..."
+    echo "[check] 执行环境与服务自检中..."
 
-    # 1) compose 配置
-    if docker compose config >/dev/null 2>&1; then
-      compose_ok="OK"
-    else
-      compose_ok="FAIL"
-      failures+=("docker compose 配置无效")
-    fi
-
-    # 2) .env 基础校验
+    # 1) .env 基础校验
     if [[ -f .env ]]; then
       env_ok="OK"
       client_id_val="$(grep -E '^CLIENT_ID=' .env | head -n1 | cut -d= -f2- || true)"
@@ -51,11 +73,25 @@ case "$cmd" in
       fi
     else
       env_ok="MISSING"
-      failures+=("缺少 .env 文件")
+      failures+=("缺少 .env 文件（请从 .env.example 复制配置）")
     fi
 
-    # 3) 容器内网络到微软登录端点
-    net_output="$(docker compose run --rm ms_graph_docker sh -lc "python3 - <<'PY'
+    # 2) compose 配置校验
+    if [[ "$env_ok" == "OK" ]]; then
+      if docker compose config >/dev/null 2>&1; then
+        compose_ok="OK"
+      else
+        compose_ok="FAIL"
+        failures+=("docker compose 配置解析失败")
+      fi
+    else
+      compose_ok="SKIPPED"
+    fi
+
+    # 3) 容器网络到微软登录端点
+    if [[ "$env_ok" == "OK" ]]; then
+      set +e
+      net_output="$(docker compose run --rm ms_graph_docker sh -lc "python3 - <<'PY'
 import requests, sys
 url='https://login.microsoftonline.com/common/discovery/v2.0/keys'
 try:
@@ -66,26 +102,31 @@ except Exception as e:
     print(f'error={e!r}')
     sys.exit(1)
 PY" 2>&1)"
-    net_rc=$?
-    if [[ $net_rc -eq 0 ]]; then
-      net_ok="OK"
+      net_rc=$?
+      set -e
+      if [[ $net_rc -eq 0 ]]; then
+        net_ok="OK"
+      else
+        net_ok="FAIL"
+        failures+=("容器无法正常访问 Microsoft 登录端点，请检查网络或 DNS")
+      fi
     else
-      net_ok="FAIL"
-      failures+=("容器无法访问 Microsoft 登录端点")
+      net_ok="SKIPPED"
+      warnings+=("因缺少 .env 配置，已跳过网络连通性测试")
     fi
 
     # 4) 主服务运行状态
-    if docker compose ps --services --status running | grep -qx 'ms_graph_docker'; then
+    if docker compose ps --services --status running 2>/dev/null | grep -qx 'ms_graph_docker'; then
       svc_ok="RUNNING"
     else
       svc_ok="STOPPED"
-      warnings+=("服务未运行（可执行: gb up）")
+      warnings+=("服务未在后台运行（配置完成后可执行: ./graphctl up）")
     fi
 
     echo
     echo "====== 自检结论 ======"
-    echo "compose 配置: $compose_ok"
     echo ".env 文件:   $env_ok"
+    echo "compose 配置: $compose_ok"
     echo "网络连通:   $net_ok"
     echo "服务状态:   $svc_ok"
 
@@ -99,7 +140,7 @@ PY" 2>&1)"
 
     if [[ ${#failures[@]} -eq 0 ]]; then
       echo
-      echo "✅ 结论：核心检查通过。"
+      echo "✅ 结论：核心检查全部通过。"
     else
       echo
       echo "❌ 结论：发现 ${#failures[@]} 个问题："
@@ -107,8 +148,7 @@ PY" 2>&1)"
         echo "- $f"
       done
       echo
-      echo "建议先执行：gb init 或 gb clean 后重装。"
-      echo "（网络问题可优先检查 VPS 出网/DNS）"
+      echo "建议：先配置 .env 并执行 ./graphctl auth，随后启动服务。"
       exit 1
     fi
     ;;
@@ -138,11 +178,7 @@ import requests
 token = os.getenv('GRAPH_BOOTSTRAP_TOKEN', '').strip()
 client_id = os.getenv('CLIENT_ID', '').strip()
 
-if not token:
-    print('skip: GRAPH_BOOTSTRAP_TOKEN missing')
-    raise SystemExit(0)
-if not client_id:
-    print('skip: CLIENT_ID missing in .env')
+if not token or not client_id:
     raise SystemExit(0)
 
 headers = {
@@ -195,21 +231,23 @@ PY"
 
     docker compose down --remove-orphans || true
     docker image rm -f graph_docker:local >/dev/null 2>&1 || true
-    rm -f .env token.txt
+    rm -rf .env token.txt data
     echo "清除完成"
     ;;
   help|*)
     cat <<'EOF'
 用法: ./graphctl <command>
 
-commands:
-  up          启动容器（含重建镜像，确保代码更新生效）
-  down        停止容器
-  logs        查看日志（默认100行，支持: ./graphctl logs 200）
-  auth        运行首次授权向导（替代 rclone）
-  tenant-init 自动创建应用与 .env（需 GRAPH_BOOTSTRAP_TOKEN）
-  check       运行自检（网络/容器）
-  clean       一键清除（可选同时删云端应用注册）
+常用命令:
+  up          启动容器后台运行（自动构建镜像）
+  down        停止并销毁容器
+  test        以单次批处理模式运行一次测试并输出完整调用日志
+  status      查看服务运行状态、Token 状态与最近日志
+  logs        查看容器实时日志（默认100行，如: ./graphctl logs 200）
+  auth        运行首次授权向导（交互式获取 refresh_token）
+  tenant-init 自动化初始化 Azure AD 应用与 .env（需提供 GRAPH_BOOTSTRAP_TOKEN）
+  check       执行环境与连通性自检
+  clean       一键完全清除本地配置、Token 与容器数据
 EOF
     ;;
 esac

@@ -3,10 +3,14 @@ services:
     build: .
     image: graph_docker:local
     container_name: ms_graph_docker
-    network_mode: host
     restart: unless-stopped
     env_file:
       - .env
     volumes:
+      - ./data:/app/data
       - ./token.txt:/app/token.txt
-      - ./.env:/app/.env
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

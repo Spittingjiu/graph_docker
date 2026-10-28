@@ -49,6 +49,7 @@ ensure_repo_update() {
   fi
 
   cd "$INSTALL_DIR"
+  mkdir -p data && touch token.txt
   chmod +x setup_all_in_one.sh graphctl bootstrap.sh auth_cli.py tenant_init.py install.sh || true
 
   # 安装/更新 gb 快捷命令
@@ -68,6 +69,7 @@ ensure_repo() {
   fi
 
   cd "$INSTALL_DIR"
+  mkdir -p data && touch token.txt
   chmod +x setup_all_in_one.sh graphctl bootstrap.sh auth_cli.py tenant_init.py install.sh || true
 
   # 安装/更新 gb 快捷命令
@@ -104,7 +106,7 @@ is_already_initialized() {
 }
 
 has_token() {
-  [[ -s "$INSTALL_DIR/token.txt" ]]
+  [[ -s "$INSTALL_DIR/data/token.txt" ]] || [[ -s "$INSTALL_DIR/token.txt" ]]
 }
 
 token_is_usable() {
@@ -121,7 +123,7 @@ if not client_id or not client_secret:
     print('missing CLIENT_ID/CLIENT_SECRET')
     sys.exit(1)
 
-token_path = '/app/token.txt'
+token_path = '/app/data/token.txt' if os.path.exists('/app/data/token.txt') else '/app/token.txt'
 if not os.path.exists(token_path):
     print('token.txt not found')
     sys.exit(1)
@@ -471,6 +473,12 @@ case "$ACTION" in
     ;;
   schedule-clear)
     clear_cron_schedule
+    ;;
+  test)
+    run_graphctl test
+    ;;
+  status)
+    run_graphctl status
     ;;
   "")
     clear_screen

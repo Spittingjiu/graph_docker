@@ -31,6 +31,7 @@ if ! docker compose version >/dev/null 2>&1; then
   exit 1
 fi
 
+mkdir -p data && touch token.txt
 if [[ ! -f .env ]]; then
   cp .env.example .env
   echo "已生成 .env"
@@ -112,7 +113,8 @@ docker compose run --rm ms_graph_docker python3 /app/auth_cli.py
 
 # 4) 启动容器
 echo "\n[4/5] 启动服务"
-docker compose up -d
+mkdir -p data && touch token.txt
+docker compose up -d --build
 
 # 5) 自检
 echo "\n[5/5] 运行自检"
